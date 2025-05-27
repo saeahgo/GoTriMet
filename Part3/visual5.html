@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Visual 5: Rainy vs Non-Rainy Speed Comparison</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.1.1/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.1.1/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin: 0; padding: 0; background: #111; color: white; font-family: sans-serif; }
+        .map-container {
+            width: 50%;
+            height: 100vh;
+            float: left;
+            display: flex;
+            flex-direction: column;
+        }
+        .map-title {
+            text-align: center;
+            padding: 10px;
+            background: #222;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .map-box {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="map-container">
+        <div class="map-title">Rainy Day (2023-01-12)</div>
+        <div id='map-left' class="map-box"></div>
+    </div>
+    <div class="map-container">
+        <div class="map-title">Non-Rainy Day (2023-01-19)</div>
+        <div id='map-right' class="map-box"></div>
+    </div>
+
+    <script>
+        mapboxgl.accessToken = '{{ MAPBOX_TOKEN }}';
+
+        const mapConfig = {
+            style: 'mapbox://styles/mapbox/dark-v10',
+            center: [-122.683083, 45.511212],
+            zoom: 10
+        };
+
+        const loadMap = (containerId, filterWeather) => {
+            const map = new mapboxgl.Map({
+                container: containerId,
+                ...mapConfig
+            });
+
+            map.on('load', () => {
+                fetch('/data/data5.geojson')
+                    .then(res => res.json())
+                    .then(data => {
+                        const filtered = {
+                            ...data,
+                            features: data.features.filter(f => f.properties.weather === filterWeather)
+                        };
+
+                        map.addSource(filterWeather, {
+                            type: 'geojson',
+                            data: filtered
+                        });
+
+                        map.addLayer({
+                            id: `${filterWeather}-layer`,
+                            type: 'circle',
+                            source: filterWeather,
+                            paint: {
+                                'circle-radius': {
+                                    base: 1.75,
+                                    property: 'speed',
+                                    type: 'exponential',
+                                    stops: [[10, 4], [20, 8]]
+                                },
+                                'circle-color': {
+                                    property: 'speed',
+                                    type: 'exponential',
+                                    stops: [
+                                        [0, 'rgb(244, 32, 4)'],
+                                        [4, 'rgb(244, 32, 4)'],
+                                        [7, 'rgb(209, 83, 4)'],
+                                        [10, 'rgb(245, 183, 121)'],
+                                        [15, 'rgb(249, 249, 71)'],
+                                        [20, 'rgb(4, 244, 32)']
+                                    ]
+                                }
+                            }
+                        });
+
+                        map.on('click', `${filterWeather}-layer`, e => {
+                            new mapboxgl.Popup()
+                                .setLngLat(e.features[0].geometry.coordinates)
+                                .setHTML(`
+                                    <b>Speed:</b> ${e.features[0].properties.speed} mph<br>
+                                    <b>Weather:</b> ${e.features[0].properties.weather}
+                                `)
+                                .addTo(map);
+                        });
+                    });
+            });
+
+            return map;
+        };
+
+        loadMap('map-left', 'rainy');
+        loadMap('map-right', 'non-rainy');
+    </script>
+</body>
+</html>

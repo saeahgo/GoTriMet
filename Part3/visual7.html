@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Visual 7: Trips by Speed</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.1.1/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.1.1/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    </style>
+</head>
+<body>
+<div id='map'></div>
+<script>
+    mapboxgl.accessToken = '{{ MAPBOX_TOKEN }}';
+
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/dark-v10',
+        center: [-122.649434, 45.508537],
+        zoom: 11
+    });
+
+    map.on('load', () => {
+        fetch('data/data7.geojson')
+            .then(res => res.json())
+            .then(data => {
+                map.addSource('data7', {
+                    type: 'geojson',
+                    data: data
+                });
+
+                map.addLayer({
+                    id: 'layer7',
+                    type: 'circle',
+                    source: 'data7',
+                    paint: {
+                        'circle-radius': 3,
+                        'circle-color': [
+                            'step',
+                            ['get', 'speed'],
+                            'red',      // speed < 10
+                            10, 'orange',// 10 <= speed < 15
+                            15, 'yellow',// 15 <= speed < 25
+                            25, 'green' // speed >= 25
+                        ],
+                        'circle-opacity': 0.8
+                    }
+                });
+
+                map.on('click', 'layer7', e => {
+                    const props = e.features[0].properties;
+                    new mapboxgl.Popup()
+                        .setLngLat(e.features[0].geometry.coordinates)
+                        .setHTML(`<b>Speed:</b> ${props.speed}<br><b>Trip ID:</b> ${props.trip_id}`)
+                        .addTo(map);
+                });
+            });
+    });
+</script>
+</body>
+</html>
